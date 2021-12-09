@@ -299,7 +299,13 @@ final class CurlResponse implements ResponseInterface, StreamableInterface
             self::$performing = true;
             ++$multi->execCounter;
             $active = 0;
-            while (\CURLM_CALL_MULTI_PERFORM === curl_multi_exec($multi->handle, $active));
+            while (\CURLM_CALL_MULTI_PERFORM === ($err = curl_multi_exec($multi->handle, $active)));
+            
+            if(\CURLM_OK !== $err) {
+                // possible values include CURLM_BAD_HANDLE / CURLM_BAD_EASY_HANDLE / CURLM_OUT_OF_MEMORY / CURLM_INTERNAL_ERROR
+                // don't know how it should be reported though, hopefully a maintainer/PR reviewer have some idea (i guess it should be some kind of TransportException ? )
+                throw new \RuntimeException("curl_multi_exec error: " . var_export($err, true) . ": ". curl_multi_strerror($err));
+            }
 
             while ($info = curl_multi_info_read($multi->handle)) {
                 $result = $info['result'];
